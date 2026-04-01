@@ -49,6 +49,7 @@ Testing: It’s much easier to write Widget Tests for small Atoms and Molecules 
 ## The "Clean-Atomic" Project Structure
 In this setup, we separate the app into Features. Each feature contains its own logic (Clean) and its own specific UI components (Atomic). Global components are kept in a shared ui_kit.
 
+```
 Plaintext
 lib/
 ├── core/                        # Global constants, themes, and network configs
@@ -75,6 +76,7 @@ lib/
 │           ├── templates/       # Feature layouts (e.g., Grid vs List skeleton)
 │           └── pages/           # The actual Screens
 └── main.dart                    # Entry point & Dependency Injection setup
+```
 
 ## How the Layers Interact
 ### 1. The Domain Layer (The Brain)
