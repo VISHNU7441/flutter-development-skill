@@ -45,75 +45,78 @@ Team Collaboration: It creates a shared language between you and the designers. 
 
 Testing: It’s much easier to write Widget Tests for small Atoms and Molecules than for an entire Page.
 
-
-## The "Clean-Atomic" Project Structure
-In this setup, we separate the app into Features. Each feature contains its own logic (Clean) and its own specific UI components (Atomic). Global components are kept in a shared ui_kit.
+## The Production-Grade Project Structure
 
 ```
 Plaintext
 lib/
-├── core/                        # Global constants, themes, and network configs
-│   ├── theme/                   # App-wide colors and text styles (Atoms)
-│   └── network/                 # Dio/Http configurations
-├── shared/                      # Global UI components (The "UI Kit")
-│   └── ui_kit/
-│       ├── atoms/               # Standard Buttons, Inputs, Loaders
-│       ├── molecules/           # Custom ListTiles, SearchBars
-│       └── organisms/           # AppDrawers, Global Headers
-├── features/                    # Modularized business features
-│   └── product_list/            # Example Feature: Product Listing
-│       ├── data/                # Data Layer
-│       │   ├── datasources/     # Remote (API) & Local (DB) sources
-│       │   ├── models/          # DTOs (Data Transfer Objects) + JSON mapping
-│       │   └── repositories/    # Implementation of Domain repositories
-│       ├── domain/              # Domain Layer (Pure Dart)
-│       │   ├── entities/        # Plain business objects
-│       │   ├── repositories/    # Abstract interfaces
-│       │   └── usecases/        # Single business actions (e.g., GetProducts)
-│       └── presentation/        # Presentation Layer (Atomic Design)
-│           ├── bloc/            # State Management (Bloc/Riverpod/Cubit)
-│           ├── components/      # Feature-specific Atoms/Molecules/Organisms
-│           ├── templates/       # Feature layouts (e.g., Grid vs List skeleton)
-│           └── pages/           # The actual Screens
-└── main.dart                    # Entry point & Dependency Injection setup
+├── core/                           # App-wide singletons and utilities
+│   ├── network/                    # Dio instance, Interceptors
+│   ├── local_db/                   # Sqflite database initialization
+│   ├── router/                     # GoRouter configuration
+│   └── theme/                      # UI Kit Atoms (Colors, Typography)
+├── shared/                         # Global UI Kit (Atomic Design)
+│   ├── atoms/                      # CustomButton, AppTextField
+│   ├── molecules/                  # SearchBar, UserTile
+│   └── organisms/                  # AppDrawer, CustomAppBar
+└── features/                       # Feature-first modularization
+    └── product_list/               # Example: Product Feature
+        ├── data/                   # Data Layer (Hexagonal Adapters)
+        │   ├── sources/            # Remote (Dio/Chopper) & Local (Sqflite)
+        │   ├── models/             # JsonSerializable/Freezed DTOs
+        │   └── repositories/       # Implementation of domain repo
+        ├── domain/                  # Domain Layer (Pure Dart)
+        │   ├── entities/           # Freezed business objects
+        │   ├── repositories/       # Abstract interfaces
+        │   └── usecases/           # Business logic (GetProductsUseCase)
+        └── presentation/           # Presentation Layer (Atomic Design)
+            ├── providers/          # Riverpod StateNotifiers/AsyncNotifiers
+            ├── components/         # Feature-specific Atoms/Molecules
+            └── pages/              # GoRouter destinations (Screens)
 ```
 
-## How the Layers Interact
-### 1. The Domain Layer (The Brain)
-This is the most important layer. According to Clean Architecture, it must not depend on any other layer or library.
+## Integrating our Tech Stack
+### 1. Data Layer: Dio, Sqflite, and JsonSerializable
+The Data layer is where you "adapt" external data into your app's language.
 
-Entities: Simple classes representing your data.
+Models: Use JsonSerializable and Freezed here. These models should include fromJSON methods to handle raw data from Dio or Sqflite.
 
-Usecases: Small classes that do one thing (e.g., FetchUserDashboard).
+Sources: This is where your Chopper or Dio API calls live.
 
-### 2. The Presentation Layer (The Face)
-This is where Atomic Design lives.
+Repositories: The implementation here calls the sources and maps the Models (Data) into Entities (Domain).
 
-Atoms/Molecules: These stay "dumb." They receive data via constructors and emit events via callbacks.
+### 2. Domain Layer: Freezed and Abstract Repos
+This layer is "pure." It doesn't know Dio or Riverpod exist.
 
-Organisms: These are often the "smart" boundary. For example, a ProductGrid organism might contain a BlocBuilder to handle its own loading state.
+Entities: Use Freezed for immutable business objects.
 
-Templates: Use these to handle Responsiveness. A template defines a MobileLayout and a DesktopLayout, accepting widgets as slots.
+Repositories: Just interfaces (abstract classes) that define what data is needed.
 
-### 3. The Data Layer (The Plumbing)
-This layer handles the outside world (APIs, Firebase, Hive).
+### 3. Presentation Layer: Riverpod and GoRouter
+This is where your Atomic Design meets your logic.
 
-Models: These extend Entities but add fromJson and toJson methods.
+Providers: Use Riverpod to "provide" your UseCases to the UI. For example, a productProvider calls GetProductsUseCase.
 
-Repositories: This is the Hexagonal Architecture "Adapter". It converts raw data from the API into the clean Entities the Domain layer understands.
+Pages: These are your Pages in Atomic Design. They are the entry points for GoRouter.
 
-## Real-World Workflow Example
-If you are building a Profile Screen:
+Routing: Your GoRouter configuration in core/router/ points directly to these Page widgets.
 
-Atoms: Create a CircularAvatar and a PrimaryText widget in shared/ui_kit.
+## The Data Flow (Hexagonal View)
+Trigger: User clicks a button (Atom) on a Page.
 
-Molecules: Combine them into a UserProfileHeader in the profile feature.
+Action: The Page calls a Riverpod Provider.
 
-Domain: Write a GetUserProfile UseCase and a User Entity.
+Logic: The Provider executes a UseCase (Domain).
 
-Data: Implement a UserRepository that calls your /api/user endpoint.
+Data Fetch: The UseCase asks the Repository Interface for data.
 
-Presentation: Your ProfilePage uses a ProfileTemplate. It calls the ProfileBloc, which triggers the UseCase. The Bloc yields a User entity, which the Template passes down to your Molecules and Atoms.
+External Call: The Repository Implementation (Data) decides whether to fetch from Dio (Remote) or Sqflite (Local).
 
-## Pro Tips for Production
-Dependency Injection:  Riverpod to link your layers without tightly coupling them.
+Return: Data flows back up as a "Pure Entity" to the UI.
+
+## Why this works for Scalability
+Swapability: Want to switch from Dio to Chopper? You only change the Data Source and the Repository Implementation. The rest of the app (UI and Business Logic) remains untouched.
+
+Testability: You can mock your Repositories easily to test your Riverpod Providers without ever making a real network call.
+
+Clear Boundaries: By separating Atoms/Molecules into a shared/ui_kit, your feature folders stay clean and focused only on feature-specific logic.
